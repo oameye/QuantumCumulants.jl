@@ -815,79 +815,6 @@ function evaluate(term;limits=nothing,kwargs...)
     return eval_term(term;limits=limits)
 end
 
-"""
-    evalME(me::MeanfieldEquations;limits::Dict{SymbolicUtils.BasicSymbolic,Int64}=Dict{SymbolicUtils.BasicSymbolic,Int64}())
-
-Function, that evaluates a given [`MeanfieldEquations`](@ref) entity and returns again equations,
-where indices have been inserted and sums evaluated.
-
-# Arguments
-*`me::MeanfieldEquations`: A [`MeanfieldEquations`](@ref) entity, which shall be evaluated.
-
-# Optional argumentes
-*`limits=Dict{SymbolicUtils.BasicSymbolic,Int64}()`: A seperate dictionary, to
-    specify any symbolic limits used when [`Index`](@ref) entities were defined. This needs
-    to be specified, when the equations contain summations, for which the upper bound is given
-    by a Symbolic.
-
-"""
-function evalME(me::AbstractMeanfieldEquations;limits=Dict{SymbolicUtils.BasicSymbolic,Int64}(),h=nothing,kwargs...)#this is still pretty slow
-    vs = me.states
-    maxRange = count_eq_number(vs;limits=limits,h=h,kwargs...)
-    if !(maxRange isa Int)
-        error("Not all upper limits of indices are set as a Number! You can do this by using the \"limits\" keyword argument.")
-    end
-    newEqs = Vector{Any}(nothing,maxRange)
-    states = Vector{Any}(nothing,maxRange)
-    counter = 1
-    for i = 1:length(vs)
-        inds = get_indices(vs[i])
-        eq = me.equations[i]
-        if !=(h,nothing)
-            filter!(x->x.aon in h,inds)
-        end
-        if isempty(inds)
-            eval = evalEq(eq;limits=limits,h=h,kwargs...)
-            if (eval.lhs ∉ states) && (_inconj(eval.lhs) ∉ states)
-                states[counter] = eval.lhs
-                newEqs[counter] = eval
-                counter = counter + 1
-            end
-        else
-            if !=(h,nothing)
-                filter!(x->x.aon in h,inds)
-            end
-            ranges_ = Vector{Any}(nothing,length(inds))
-            for i=1:length(inds)
-                ranges_[i] = (inds[i].range in keys(limits)) ? (1:limits[inds[i].range]) : (1:inds[i].range)
-            end
-            arr = create_index_arrays(inds,ranges_)
-            for j=1:length(arr)
-                if !isempty(get_numbers(eq.lhs)) && !(check_arr(eq.lhs,arr[j]))
-                    continue
-                end
-                dict = Dict{Index,Int}(inds .=> arr[j])
-                eq_lhs = insert_indices_lhs(eq.lhs,dict)
-                if (eq_lhs ∉ states) && (_inconj(eq_lhs) ∉ states)
-                    eq_rhs = insert_indices(eq,dict;limits=limits,h=h,kwargs...)
-                    states[counter] = eq_lhs
-                    if SymbolicUtils._iszero(eq_rhs)
-                        newEqs[counter] = Symbolics.Equation(eq_lhs,0)
-                    else
-                        newEqs[counter] = Symbolics.Equation(eq_lhs,eq_rhs)
-                    end
-                    counter = counter + 1
-                end
-            end
-        end
-    end
-    states = states[1:(counter-1)]
-    operats = undo_average.(states)
-    newEqs = newEqs[1:(counter-1)]
-    varmap = make_varmap(states, me.iv)
-    return EvaledMeanfieldEquations(newEqs,me.operator_equations,states,operats,me.hamiltonian,me.jumps,me.jumps_dagger,me.rates,me.iv,varmap,me.order)
- end
-
  # function that counts how many equations are needed for a given set of states
  function count_eq_number(vs;limits=Dict(),h=nothing,kwargs...)
     if !=(h,nothing) && !(h isa Vector)
@@ -934,47 +861,7 @@ function check_arr(lhs,arr)
     return true
 end
 
-function insert_indices_lhs(term::Average,map::Dict{Index,Int64};kwargs...)
-    lhs = term
-    map_ = copy(map)
-    while !isempty(map_)
-        pair = first(map_)
-        lhs = insert_index(lhs,first(pair),last(pair))
-        delete!(map_,first(pair))
-        inorder!(lhs)
-    end
-    return lhs
-end
-"""
-    insert_indices(eq::Symbolics.Equation,map::Dict{Index,Int64};limits=Dict{SymbolicUtils.BasicSymbolic,Int64}())
-
-Function, that inserts an integer value for a index in a specified Equation. This function creates Numbered- Variables/Operators/Sums upon calls.
-Mainly used by [`evalEquation`](@ref).
-
-# Arguments
-*`eq::Symbolics.Equation`: The equation for which the indices will be inserted.
-*`map::Dict{Index,Int64}`: A dictionary, which contains specifications for the insertions
-    the entry (i => 5) would result in all `i` indices being replaced with the number 5.
-
-# Optional argumentes
-*`limits::Dict{SymbolicUtils.BasicSymbolic,Int64}=Dict{Symbol,Int64}()`: A seperate dictionary, to
-    specify any symbolic limits used when [`Index`](@ref) entities were defined. This needs
-    to be specified, when the equation contains summations, for which the upper bound is given
-    by a Symbolic.
-
-"""
-function insert_indices(eq::Symbolics.Equation,map::Dict{Index,Int64};limits=Dict{SymbolicUtils.BasicSymbolic,Int64}(),kwargs...)
-    eq_rhs = eq.rhs
-    while !isempty(map)
-        pair = first(map)
-        eq_rhs = insert_index(eq_rhs,first(pair),last(pair))
-        delete!(map,first(pair))
-    end
-    return eval_term(eq_rhs;limits,kwargs...) #return finished equation
-end
-
-
- function Base.show(io::IO,de::EvaledMeanfieldEquations)
+function Base.show(io::IO,de::EvaledMeanfieldEquations)
     write(io,"Evaluated Meanfield equations with: ")
     write(io, "$(length(de.equations))")
     write(io, " number of equations")
