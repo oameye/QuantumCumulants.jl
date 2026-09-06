@@ -9,13 +9,14 @@ on:
       - 'benchmark/fast_lowering_experiment.jl'
       - 'src/**'
       - 'Project.toml'
-      - 'benchmark/Project.toml'
   workflow_dispatch:
 
 jobs:
   lowering:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      JULIA_PKG_PRECOMPILE_AUTO: '0'
     strategy:
       fail-fast: false
       matrix:
@@ -39,12 +40,13 @@ jobs:
           version: '1.12'
           arch: x64
       - uses: julia-actions/cache@v3
-      - name: Instantiate benchmark environment
+      - name: Prepare minimal experiment environment
         run: |
-          julia --project=benchmark --color=yes -e '
+          julia --color=yes -e '
             using Pkg
+            Pkg.activate(".fastlower")
             Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()'
+            Pkg.add(["OrdinaryDiffEqTsit5", "SciMLBase", "SymbolicUtils", "Symbolics"])'
       - name: Run ${{ matrix.label }}
         env:
           QC_FASTLOWER_ORDER: ${{ matrix.order }}
@@ -52,7 +54,7 @@ jobs:
           QC_FASTLOWER_VALIDATE: ${{ matrix.validate }}
           QC_FASTLOWER_RESULTS: benchmark/results/${{ matrix.label }}.log
         run: |
-          julia --project=benchmark --threads=2 --color=yes benchmark/fast_lowering_experiment.jl
+          julia --project=.fastlower --threads=2 --color=yes benchmark/fast_lowering_experiment.jl
       - uses: actions/upload-artifact@v4
         if: always()
         with:
