@@ -1,4 +1,4 @@
-name: Fast MomentIR Lowering Experiment
+name: Recursive MomentIR Lowering Experiment
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - 'experiment/moment-ir-fast-lowering'
     paths:
       - '.github/workflows/FastLoweringExperiment.yml'
-      - 'benchmark/fast_lowering_experiment.jl'
+      - 'benchmark/recursive_lowering_experiment.jl'
       - 'src/**'
       - 'Project.toml'
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - label: order3-fast
+          - label: order3-recursive
             order: 3
             mode: fast
             validate: 1
@@ -29,10 +29,10 @@ jobs:
             order: 3
             mode: baseline
             validate: 0
-          - label: order4-fast
+          - label: order4-recursive
             order: 4
             mode: fast
-            validate: 0
+            validate: 1
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
@@ -54,10 +54,10 @@ jobs:
           QC_FASTLOWER_VALIDATE: ${{ matrix.validate }}
           QC_FASTLOWER_RESULTS: benchmark/results/${{ matrix.label }}.log
         run: |
-          julia --project=.fastlower --threads=2 --color=yes benchmark/fast_lowering_experiment.jl
+          julia --project=.fastlower --threads=2 --color=yes benchmark/recursive_lowering_experiment.jl
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fast-lowering-${{ matrix.label }}
+          name: recursive-lowering-${{ matrix.label }}
           path: benchmark/results/${{ matrix.label }}.log
           if-no-files-found: warn
