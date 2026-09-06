@@ -1,0 +1,61 @@
+name: Fast MomentIR Lowering Experiment
+
+on:
+  push:
+    branches:
+      - 'experiment/moment-ir-fast-lowering'
+    paths:
+      - '.github/workflows/FastLoweringExperiment.yml'
+      - 'benchmark/fast_lowering_experiment.jl'
+      - 'src/**'
+      - 'Project.toml'
+      - 'benchmark/Project.toml'
+  workflow_dispatch:
+
+jobs:
+  lowering:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: order3-fast
+            order: 3
+            mode: fast
+            validate: 1
+          - label: order3-baseline
+            order: 3
+            mode: baseline
+            validate: 0
+          - label: order4-fast
+            order: 4
+            mode: fast
+            validate: 0
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.12'
+          arch: x64
+      - uses: julia-actions/cache@v3
+      - name: Instantiate benchmark environment
+        run: |
+          julia --project=benchmark --color=yes -e '
+            using Pkg
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.instantiate()'
+      - name: Run ${{ matrix.label }}
+        env:
+          QC_FASTLOWER_ORDER: ${{ matrix.order }}
+          QC_FASTLOWER_MODE: ${{ matrix.mode }}
+          QC_FASTLOWER_VALIDATE: ${{ matrix.validate }}
+          QC_FASTLOWER_RESULTS: benchmark/results/${{ matrix.label }}.log
+        run: |
+          julia --project=benchmark --threads=2 --color=yes benchmark/fast_lowering_experiment.jl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fast-lowering-${{ matrix.label }}
+          path: benchmark/results/${{ matrix.label }}.log
+          if-no-files-found: warn
