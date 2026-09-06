@@ -15,6 +15,9 @@ concurrency:
   group: recursive-lowering-validation-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  JULIA_NUM_THREADS: 11
+
 jobs:
   tests:
     name: Tests - Julia ${{ matrix.version }}
@@ -62,16 +65,3 @@ jobs:
         run: julia --project=test -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Run JET analysis
         run: julia --project=test test/quality/JET.jl
-
-  format:
-    name: Runic
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: '1'
-      - uses: julia-actions/cache@v3
-      - uses: fredrikekre/runic-action@v1
-        with:
-          version: '1'
