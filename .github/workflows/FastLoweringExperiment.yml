@@ -47,6 +47,9 @@ jobs:
             Pkg.activate(".fastlower")
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.add(["OrdinaryDiffEqTsit5", "SciMLBase", "SymbolicUtils", "Symbolics"])'
+      - name: Apply experiment-only guard fix
+        run: |
+          sed -i 's/coeff == 1 && return p/isequal(coeff, 1) \&\& return p/' benchmark/recursive_lowering_experiment.jl
       - name: Run ${{ matrix.label }}
         env:
           QC_FASTLOWER_ORDER: ${{ matrix.order }}
