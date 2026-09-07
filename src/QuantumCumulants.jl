@@ -15,6 +15,7 @@ using OrderedCollections: OrderedCollections
 using Combinatorics: Combinatorics, partitions
 using TermInterface: TermInterface
 using LinearAlgebra: I
+using SciMLBase: SciMLBase
 const MTK = ModelingToolkitBase
 
 export AbstractMeanfieldEquations, MeanfieldEquations, NoiseMeanfieldEquations
@@ -28,6 +29,7 @@ export System, initial_values, get_solution, parameter_map
 export CorrelationFunction, Spectrum, correlation_u0, correlation_p0
 export translate_W_to_Y, modify_equations, modify_equations!
 export simplify!, substitute!
+export KernelBackend, update_parameters!
 
 #  early types (abstract eqs supertype, treatment enum, direction tags), identity
 include("equations.jl")
@@ -50,10 +52,11 @@ include("scaling.jl")
 include("evaluate.jl")
 include("mtk.jl")
 
-# structured numerical representation and compact serial execution
+# structured numerical representation, compact execution, and direct SciML integration
 include("backends/moment_ir.jl")
 include("backends/moment_poly_lower.jl")
 include("backends/moment_kernel.jl")
+include("backends/kernel_sciml.jl")
 
 include("correlation.jl")
 include("spectrum.jl")

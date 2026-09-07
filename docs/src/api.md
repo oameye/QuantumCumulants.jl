@@ -392,6 +392,13 @@ substitute!
 SecondQuantizedAlgebra.make_time_dependent
 ```
 
+## [Direct ODE backend](@id API: Direct ODE backend)
+
+```@docs
+KernelBackend
+update_parameters!
+```
+
 ## [Numeric backends](@id API: Numeric backends)
 
 Symbolic-to-numeric conversion ([`to_numeric`](@ref), [`numeric_average`](@ref),
